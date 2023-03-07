@@ -8,17 +8,7 @@ This is a Python implementation of the NTRUEncrypt algorithm, which is a lattice
 
 The implementation requires the following Python packages:
 
-- NumPy
-To install these packages, you can use the following command:
-```
-pip install numpy sympy
-```
-You can install it with the reuirements too:
-```
-pip install -r requirements.txt
-```
-
-## PyPi Usage
+## Usage
 This project can be installed with pip for easy usage.
 
 ### Installation
@@ -26,24 +16,11 @@ This project can be installed with pip for easy usage.
 
 ### Usage
 ```
-import pq_ntru.ntru
+import pq_ntru
 
-pq_ntru.ntru.generate_keys("key_filename", mode="moderate")
-enc = pq_ntru.ntru.encrypt("key_filename", "message")
-dec = pq_ntru.ntru.decrypt("key_filename", enc)
-```
-
-## Other Usage
-
-To use the implementation, you can import the ntru module and use the encrypt and decrypt functions to encrypt and decrypt messages, respectively.
-
-```
-import NTRU2
-
-NTRU2.generate_keys("test", mode="moderate")
-enc = NTRU2.encrypt("test", "hello world")
-dec = NTRU2.decrypt("test", enc)
-print("Decrypted message:", dec)
+pq_ntru.generate_keys("key_filename", mode="moderate")
+enc = pq_ntru.encrypt("key_filename", "message")
+dec = pq_ntru.decrypt("key_filename", enc)
 ```
 
 ## Implementation Details
