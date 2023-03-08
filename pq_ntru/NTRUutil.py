@@ -7,6 +7,32 @@ from sympy import Poly, symbols, GF, invert
 np.set_printoptions(threshold=sys.maxsize)
 
 
+def factor_int(n):
+    """
+    Return a dictionary of the prime factorization of n.
+    The keys of the dictionary are the prime factors of n, and the values are their
+    multiplicities (i.e. the power to which each prime factor appears in the factorization).
+    """
+    factors_ = {}
+    d = 2
+    while n > 1:
+        while n % d == 0:
+            if d in factors_:
+                factors_[d] += 1
+            else:
+                factors_[d] = 1
+            n //= d
+        d += 1
+        if d*d > n:
+            if n > 1:
+                if n in factors_:
+                    factors_[n] += 1
+                else:
+                    factors_[n] = 1
+            break
+    return factors_
+
+
 def checkPrime(P):
     """
     Check if the input integer P is prime, if prime return True
