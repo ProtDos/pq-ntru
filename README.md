@@ -26,16 +26,19 @@ This project can be installed with pip for easy usage.
 
 ### Usage
 ```
-import pq_ntru.ntru
+import pq_ntru
 
-pq_ntru.ntru.generate_keys("key_filename", mode="moderate")
-enc = pq_ntru.ntru.encrypt("key_filename", "message")
-dec = pq_ntru.ntru.decrypt("key_filename", enc)
+pq_ntru.generate_keys("key_filename", mode="moderate")
+enc = pq_ntru.encrypt("key_filename", "message")
+dec = pq_ntru.decrypt("key_filename", enc)
 ```
 
 ## Other Usage
 
 To use the implementation, you can import the ntru module and use the encrypt and decrypt functions to encrypt and decrypt messages, respectively.
+```
+git clone https://github.com/protdos/pq-ntru
+```
 
 ```
 import NTRU2
