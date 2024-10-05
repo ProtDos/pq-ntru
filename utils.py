@@ -1,0 +1,232 @@
+import logging
+import math
+import time
+
+import numpy as np
+from math import log
+import sys
+# Use sympy for polynomial operations
+from sympy import Poly, symbols, GF, invert
+
+np.set_printoptions(threshold=sys.maxsize)
+
+
+def factor_int(n):
+    """
+    Return a dictionary of the prime factorization of n.
+    The keys of the dictionary are the prime factors of n, and the values are their
+    multiplicities (i.e. the power to which each prime factor appears in the factorization).
+    """
+    factors_ = {}
+    d = 2
+    while n > 1:
+        while n % d == 0:
+            if d in factors_:
+                factors_[d] += 1
+            else:
+                factors_[d] = 1
+            n //= d
+        d += 1
+        if d*d > n:
+            if n > 1:
+                if n in factors_:
+                    factors_[n] += 1
+                else:
+                    factors_[n] = 1
+            break
+    return factors_
+
+
+def checkPrime(P):
+    a = time.time()
+    """
+    Check if the input integer P is prime, if prime return True
+    else return False.
+    """
+    if P <= 1:
+        return False
+    elif P == 2 or P == 3:
+        return True
+    else:
+        # Otherwise, check if P is dividable by any value over 4 and under P/2
+        for i in range(4, P // 2):
+            if P % i == 0:
+                return False
+
+    return True
+
+
+def poly_inv(poly_in, poly_I, poly_mod):
+    x = symbols('x')
+    Ppoly_I = Poly(poly_I, x)
+    Npoly_I = len(Ppoly_I.all_coeffs())
+
+    # Pre-compute domain
+    if checkPrime(poly_mod):
+        domain = GF(poly_mod, symmetric=False)
+    elif log(poly_mod, 2).is_integer():
+        domain = GF(2, symmetric=False)
+    else:
+        return np.array([])
+
+    # Convert input polynomial once
+    poly_in_expr = Poly(poly_in, x).as_expr()
+    poly_I_expr = Ppoly_I.as_expr()
+
+    try:
+        if checkPrime(poly_mod):
+            inv = invert(poly_in_expr, poly_I_expr, domain=domain)
+        else:  # Power of 2 case
+            inv = invert(poly_in_expr, poly_I_expr, domain=domain)
+
+
+            # Optimize the iteration loop
+            inv_poly = Poly(inv, x)
+            poly_in_poly = Poly(poly_in, x)
+
+            result = inv_poly
+            exponent = int(log(poly_mod, 2))
+
+            while exponent > 0:
+                if exponent % 2 == 1:  # wenn exponent ungerade ist
+                    result = ((2 * result - poly_in_poly * (result ** 2)) % Ppoly_I).trunc(poly_mod)
+                inv_poly = (inv_poly ** 2) % Ppoly_I  # Quadrat des aktuellen inversen Polynoms
+                exponent //= 2  # halbiere den Exponenten
+
+            inv = result
+    except:
+        return np.array([])
+
+    # Verification step
+    result_poly = Poly((Poly(inv, x) * Poly(poly_in, x)) % Ppoly_I, domain=domain)
+    tmpCheck = np.array(result_poly.all_coeffs(), dtype=int)
+
+    if len(tmpCheck) > 1 or tmpCheck[0] != 1:
+        raise ValueError("Error in calculation of polynomial inverse")
+
+    return padArr(np.array(Poly(inv, x).all_coeffs(), dtype=int), Npoly_I - 1)
+
+
+def padArr(A_in, A_out_size):
+    """
+    Take an input numpy integer array A_in and pad with leading zeros.
+    Return the numpy array of size A_out_size with leading zeros
+    """
+    return np.pad(A_in, (A_out_size - len(A_in), 0), constant_values=0)
+
+
+def genRand10(L, P, M):
+    """
+    Generate a numpy array of length L with P 1's, M -1's and the remaining elements 0.
+    The elements will be in a random order, with randomisation done using np.random.shuffle.
+    This is used to generate the f, p and r arrays for NTRU encryption based on [1].
+
+    INPUTS:
+    =======
+    L : Integer, the length of the desired output array.
+    P : Integer, the number of `positive' i.e. +1's in the array.
+    M : Integer, the number of `negative' i.e. -1's in the array.
+
+    RETURNS:
+    ========
+    An integer numpy array with P +1's, M -1's and L-P-M 0's.
+
+    REFERENCES:
+    ===========
+    [1] Hoffstein J, Pipher J, Silverman JH. NTRU: A Ring-Based Public Key Cryptosystem.
+        Algorithmic Number Theory. 1998; 267--288.
+    """
+
+    # Error check, the munber of 1's and -1's must be less than or equal to length
+    if P + M > L:
+        sys.exit("ERROR: Asking for P+M>L.")
+
+    # Generate an `empty' array of zeros
+    R = np.zeros((L,), dtype=int)
+
+    # Loop through and populate the array with 1's and -1's, not in random order
+    for i in range(L):
+        if i < P:
+            R[i] = 1
+        elif i < P + M:
+            R[i] = -1
+        else:
+            break
+
+    # Return a randomised array
+    np.random.shuffle(R)
+    return R
+
+
+def arr2str(ar):
+    """
+    Convert a numpy array to a string containing only the elements of the array.
+
+    INPUTS:
+    =======
+    ar : Numpy array, elements will be concatenated and returned as string.
+
+    RETURNS:
+    ========
+    A string containing all the elements of ar concatenated, each element separated by a space
+    """
+    st = np.array_str(ar)
+    st = st.replace("[", "", 1)
+    st = st.replace("]", "", 1)
+    st = st.replace("\n", "")
+    st = st.replace("     ", " ")
+    st = st.replace("    ", " ")
+    st = st.replace("   ", " ")
+    st = st.replace("  ", " ")
+    return st
+
+
+def str2bit(st):
+    """
+    Convert the input string st into a binary representation of the string, with each
+    bit as an element of an integer numpy array.
+
+    INPUTS:
+    =======
+    st : String, to be converted to an array of integers representing the string in binary.
+
+    RETURNS:
+    ========
+    A numpy array containing only 1's and 0's representing the input string st in binary.
+    NOTE : The initial "0b" is removed from the output array.
+    """
+    return np.array(list(bin(int.from_bytes(str(st).encode(), "big")))[2:], dtype=int)
+
+
+def bit2str(bi):
+    """
+    Convert an array of bits to the string described by those bits.
+
+    INPUTS:
+    =======
+    bi : Numpy integer array, containing only 1's and 0's. When flattened this represents a
+         string (not including the "0b" prefix).
+
+    RETURNS:
+    ========
+    A string, the binary values in the bi array converted to a string.
+    """
+
+    # Make sure the number of bits in the string is dividable by 8 (8 bits per character)
+    # S = padArr(bi, len(bi) + np.mod(len(bi), 8))
+
+    # Convert the input binary array to a string and remove any spaces
+    S = arr2str(bi)
+    S = S.replace(" ", "")
+
+    # Then take each 8 bit section on its own, starting from last bits (to avoid issues
+    # that can arise from padding the front of the array with 0's)
+    charOut = ""
+    for i in range(len(S) // 8):
+        if i == 0:
+            charb = S[len(S) - 8:]
+        else:
+            charb = S[-(i + 1) * 8:-i * 8]
+        charb = int(charb, 2)
+        charOut = charb.to_bytes((charb.bit_length() + 7) // 8, "big").decode("utf-8", errors="ignore") + charOut
+    return charOut
