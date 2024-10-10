@@ -56,7 +56,59 @@ def checkPrime(P):
     return True
 
 
-def poly_inv(poly_in, poly_I, poly_mod):
+def poly_inv(poly_in,poly_I,poly_mod):
+    """
+    Find the inverse of the polynomial poly_in in the Galois filed GF(poly_mod)
+    i.e. the inverse in
+        Z/poly_mod[X]/poly_I
+
+    Inputs and outputs are given as an array of coefficients where
+        x^4 + 5x^2 + 3 == [1,0,5,0,3]
+
+    Returns
+    =======
+    Either an empty array if the inverse cannot be found, or the inverse of the
+    polynomial poly_in as an array of coefficients.
+
+    References
+    ==========
+    https://arxiv.org/abs/1311.1779
+    """
+    x = symbols('x')
+    Ppoly_I = Poly(poly_I,x)
+    Npoly_I = len(Ppoly_I.all_coeffs())
+    if checkPrime(poly_mod):
+        # For prime poly_mod we only need use the sympy invert routine, we then pull out
+        # all the coefficients for the inverse and return (not all_coeffs() also includes
+        # zeros in the array
+        try:
+            inv = invert(Poly(poly_in,x).as_expr(),Ppoly_I.as_expr(),domain=GF(poly_mod,symmetric=False))
+        except:
+            return np.array([])
+    elif log(poly_mod, 2).is_integer():
+        try:
+            # Follow the procedure outlined in https://arxiv.org/abs/1311.1779 to find the inverse
+            inv = invert(Poly(poly_in,x).as_expr(),Ppoly_I.as_expr(),domain=GF(2,symmetric=False))
+
+            ex = int(log(poly_mod,2))
+            for a in range(1,ex):
+                inv = ((2*Poly(inv,x)-Poly(poly_in,x)*Poly(inv,x)**2)%Ppoly_I).trunc(poly_mod)
+            inv = Poly(inv,domain=GF(poly_mod,symmetric=False))
+        except:
+            return np.array([])
+    else:
+        # Otherwise we cannot find the inverse
+        return np.array([])
+
+    # If we have got this far we have calculated an inverse, doublecheck the inverse via poly mult
+    tmpCheck = np.array(Poly((Poly(inv,x)*Poly(poly_in,x))%Ppoly_I, domain=GF(poly_mod,symmetric=False)).all_coeffs(),dtype=int)
+    if len(tmpCheck)>1 or tmpCheck[0]!=1:
+        sys.exit("ERROR : Error in caclualtion of polynomial inverse")
+
+    return padArr(np.array(Poly(inv,x).all_coeffs(),dtype=int),Npoly_I-1)
+
+
+def poly_inv_2(poly_in, poly_I, poly_mod):
     x = symbols('x')
     Ppoly_I = Poly(poly_I, x)
     Npoly_I = len(Ppoly_I.all_coeffs())
@@ -219,6 +271,8 @@ def bit2str(bi):
     S = arr2str(bi)
     S = S.replace(" ", "")
 
+    print(S)
+
     # Then take each 8 bit section on its own, starting from last bits (to avoid issues
     # that can arise from padding the front of the array with 0's)
     charOut = ""
@@ -227,6 +281,9 @@ def bit2str(bi):
             charb = S[len(S) - 8:]
         else:
             charb = S[-(i + 1) * 8:-i * 8]
+
+        print(charb)
         charb = int(charb, 2)
         charOut = charb.to_bytes((charb.bit_length() + 7) // 8, "big").decode("utf-8", errors="ignore") + charOut
+
     return charOut
